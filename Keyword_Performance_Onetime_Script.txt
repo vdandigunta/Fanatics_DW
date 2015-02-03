@@ -107,31 +107,6 @@ WHERE substring ilike '%{matchtype}%'
 --2379675
 ;
 
-create table temporary.kw_match_type
-distkey (marin_keyword_id)
-sortkey (date)
-as 
-select marin_keyword_id,date from temporary.kw_perf_daily_viswa_temp
-where substring ilike '%{matchtype}%'
---2379675
-;
-
-/* Exclude Keywords with {MatchType} string */
-
-create table temporary.kw_perf_daily_viswa_temp_clean
-distkey (marin_keyword_id)
-sortkey (date)
-as 
-select kt.*
-from temporary.kw_perf_daily_viswa_temp kt
-left outer join temporary.kw_match_type kmt on kt.marin_keyword_id = kmt.marin_keyword_id and kt.date = kmt.date
-where kmt.marin_keyword_id is null
-and kmt.date is null
-;
-
-SELECT COUNT(*) FROM temporary.kw_perf_daily_viswa_temp_clean 
---95064747
-;
 
 
 /* Join final keyword table with Dimension tables to rollup at campaign/publisher/account level */
@@ -199,7 +174,7 @@ date
 ,cpc
 ,revenue
 ,conv_count
-from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+from temporary.kw_perf_daily_viswa_temp kw_tmp
 join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
 join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
 join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
@@ -240,7 +215,7 @@ date
 ,cpc
 ,revenue
 ,conv_count
-from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+from temporary.kw_perf_daily_viswa_temp kw_tmp
 join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
 join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
 join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
@@ -281,7 +256,7 @@ date
 ,cpc
 ,revenue
 ,conv_count
-from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+from temporary.kw_perf_daily_viswa_temp kw_tmp
 join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
 join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
 join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
@@ -290,7 +265,7 @@ where date BETWEEN '2014-11-01'AND '2014-11-30'
 ;
 
 select count(*) from temporary.kw_perf_daily_viswa_final
---95064747
+--97444422
 ;
 
 GRANT SELECT ON temporary.kw_perf_daily_viswa_final TO PUBLIC ;
