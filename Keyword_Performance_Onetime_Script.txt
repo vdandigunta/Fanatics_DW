@@ -1,0 +1,317 @@
+
+
+/* Get Keyword Metrics for 3 months 2014_Nov, 2014_Dec, 2015_Jan */
+
+/* 2015_Jan */
+
+CREATE TABLE temporary.kw_perf_daily_viswa_temp 
+DISTKEY (MARIN_KEYWORD_ID)
+SORTKEY (DATE)
+AS 
+(
+SELECT
+			F.DATE,
+			K.MARIN_KEYWORD_ID,
+			K.MARIN_GROUP_ID,
+			K.KEYWORD,
+			K.KEYWORD_MATCH_TYPE,
+			substring(regexp_substr(KEYWORD_URL, 'mkwid=[^&]+',7),7,20),
+			count(distinct k.keyword) as kw_count,
+			avg(k.quality_score) as QS, avg(min_bid) as min_bid,
+			avg(search_bid) as search_bid,
+			sum(publisher_cost) as cost,
+			sum(impressions) imp, sum(clicks) clicks,
+			avg(avg_pos) pos, avg(avg_cpc) cpc, sum(revenue) as revenue,
+			sum(conversions) as conv_count
+from raw_marin.fact_keyword_SORT f
+join raw_marin.settings_keyword_SORT k on f.marin_keyword_id=k.marin_keyword_id and f.marin_group_id=k.marin_group_id
+where date BETWEEN '2015-01-25'AND '2015-01-31'
+group by 1, 2, 3, 4, 5, 6
+);
+
+
+INSERT INTO temporary.kw_perf_daily_viswa_temp
+SELECT
+			F.DATE,
+			K.MARIN_KEYWORD_ID,
+			K.MARIN_GROUP_ID,
+			K.KEYWORD,
+			K.KEYWORD_MATCH_TYPE,
+			substring(regexp_substr(KEYWORD_URL, 'mkwid=[^&]+',7),7,20),
+			count(distinct k.keyword) as kw_count,
+			avg(k.quality_score) as QS, avg(min_bid) as min_bid,
+			avg(search_bid) as search_bid,
+			sum(publisher_cost) as cost,
+			sum(impressions) imp, sum(clicks) clicks,
+			avg(avg_pos) pos, avg(avg_cpc) cpc, sum(revenue) as revenue,
+			sum(conversions) as conv_count
+from raw_marin.fact_keyword_SORT f
+join raw_marin.settings_keyword_SORT k on f.marin_keyword_id=k.marin_keyword_id and f.marin_group_id=k.marin_group_id
+where date BETWEEN '2015-01-01'AND '2015-01-24'
+group by 1, 2, 3, 4, 5, 6 
+;
+
+/* 2014_Dec */
+
+INSERT INTO temporary.kw_perf_daily_viswa_temp
+SELECT
+			F.DATE,
+			K.MARIN_KEYWORD_ID,
+			K.MARIN_GROUP_ID,
+			K.KEYWORD,
+			K.KEYWORD_MATCH_TYPE,
+			substring(regexp_substr(KEYWORD_URL, 'mkwid=[^&]+',7),7,20),
+			count(distinct k.keyword) as kw_count,
+			avg(k.quality_score) as QS, avg(min_bid) as min_bid,
+			avg(search_bid) as search_bid,
+			sum(publisher_cost) as cost,
+			sum(impressions) imp, sum(clicks) clicks,
+			avg(avg_pos) pos, avg(avg_cpc) cpc, sum(revenue) as revenue,
+			sum(conversions) as conv_count
+from raw_marin.fact_keyword_SORT f
+join raw_marin.settings_keyword_SORT k on f.marin_keyword_id=k.marin_keyword_id and f.marin_group_id=k.marin_group_id
+where date BETWEEN '2014-12-01'AND '2014-12-31'
+group by 1, 2, 3, 4, 5, 6 
+;
+
+/* 2014_Nov */
+
+INSERT INTO temporary.kw_perf_daily_viswa_temp
+SELECT
+			F.DATE,
+			K.MARIN_KEYWORD_ID,
+			K.MARIN_GROUP_ID,
+			K.KEYWORD,
+			K.KEYWORD_MATCH_TYPE,
+			substring(regexp_substr(KEYWORD_URL, 'mkwid=[^&]+',7),7,20),
+			count(distinct k.keyword) as kw_count,
+			avg(k.quality_score) as QS, avg(min_bid) as min_bid,
+			avg(search_bid) as search_bid,
+			sum(publisher_cost) as cost,
+			sum(impressions) imp, sum(clicks) clicks,
+			avg(avg_pos) pos, avg(avg_cpc) cpc, sum(revenue) as revenue,
+			sum(conversions) as conv_count
+from raw_marin.fact_keyword_SORT f
+join raw_marin.settings_keyword_SORT k on f.marin_keyword_id=k.marin_keyword_id and f.marin_group_id=k.marin_group_id
+where date BETWEEN '2014-11-01'AND '2014-11-30'
+group by 1, 2, 3, 4, 5, 6 
+;
+
+
+SELECT COUNT(*) FROM temporary.kw_perf_daily_viswa_temp
+--97444422
+;
+
+select count(*) from temporary.kw_perf_daily_viswa_temp
+WHERE substring ilike '%{matchtype}%'
+--2379675
+;
+
+create table temporary.kw_match_type
+distkey (marin_keyword_id)
+sortkey (date)
+as 
+select marin_keyword_id,date from temporary.kw_perf_daily_viswa_temp
+where substring ilike '%{matchtype}%'
+--2379675
+;
+
+/* Exclude Keywords with {MatchType} string */
+
+create table temporary.kw_perf_daily_viswa_temp_clean
+distkey (marin_keyword_id)
+sortkey (date)
+as 
+select kt.*
+from temporary.kw_perf_daily_viswa_temp kt
+left outer join temporary.kw_match_type kmt on kt.marin_keyword_id = kmt.marin_keyword_id and kt.date = kmt.date
+where kmt.marin_keyword_id is null
+and kmt.date is null
+;
+
+SELECT COUNT(*) FROM temporary.kw_perf_daily_viswa_temp_clean 
+--95064747
+;
+
+drop table temporary.kw_perf_daily_viswa ;
+
+create table temporary.kw_perf_daily_viswa_final 
+distkey (marin_keyword_id)
+sortkey (date)
+as
+(
+select
+date
+,marin_keyword_id
+,marin_group_id
+,p.marin_pca_id
+,c.campaign_id
+,a.marin_client_id
+,keyword
+,keyword_match_type
+,case when  (keyword  like '%fanatic%' or
+       lower(keyword)  like '%nfl%' or
+       keyword  like '%nba%' or
+       keyword  like '%fansedge%' or
+       keyword  like '%ncaa%' or
+       keyword  like '%nascar%' or      
+       keyword  like '%nhl%' or
+       keyword  like '%mlb%' or
+       keyword like '%n.f.l%' or
+       keyword like '%n.a.s.c.a.r%' or
+       keyword in ('n. f. l. com', 'm.l.b.', 'fan edges' ) ) then 'Y' else 'N' end as branded_YN
+,substring as marin_kw_id
+,kw_count
+,qs
+,min_bid
+,search_bid
+,cost
+,imp
+,clicks
+,pos
+,cpc
+,revenue
+,conv_count
+from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
+join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
+join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
+join raw_marin.settings_account a on p.marin_client_id=a.marin_client_id
+where date BETWEEN '2015-01-01'AND '2015-01-31'
+);
+
+
+TRUNCATE temporary.kw_perf_daily_viswa_final ;
+
+INSERT INTO temporary.kw_perf_daily_viswa_final
+select
+date
+,marin_keyword_id
+,marin_group_id
+,p.marin_pca_id
+,c.campaign_id
+,a.marin_client_id
+,keyword
+,keyword_match_type
+,case when  (keyword  like '%fanatic%' or
+       lower(keyword)  like '%nfl%' or
+       keyword  like '%nba%' or
+       keyword  like '%fansedge%' or
+       keyword  like '%ncaa%' or
+       keyword  like '%nascar%' or      
+       keyword  like '%nhl%' or
+       keyword  like '%mlb%' or
+       keyword like '%n.f.l%' or
+       keyword like '%n.a.s.c.a.r%' or
+       keyword in ('n. f. l. com', 'm.l.b.', 'fan edges' ) ) then 'Y' else 'N' end as branded_YN
+,substring as marin_kw_id
+,kw_count
+,qs
+,min_bid
+,search_bid
+,cost
+,imp
+,clicks
+,pos
+,cpc
+,revenue
+,conv_count
+from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
+join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
+join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
+join raw_marin.settings_account a on p.marin_client_id=a.marin_client_id
+where date BETWEEN '2015-01-01'AND '2015-01-31'
+;
+
+INSERT INTO temporary.kw_perf_daily_viswa_final
+select
+date
+,marin_keyword_id
+,marin_group_id
+,p.marin_pca_id
+,c.campaign_id
+,a.marin_client_id
+,keyword
+,keyword_match_type
+,case when  (keyword  like '%fanatic%' or
+       lower(keyword)  like '%nfl%' or
+       keyword  like '%nba%' or
+       keyword  like '%fansedge%' or
+       keyword  like '%ncaa%' or
+       keyword  like '%nascar%' or      
+       keyword  like '%nhl%' or
+       keyword  like '%mlb%' or
+       keyword like '%n.f.l%' or
+       keyword like '%n.a.s.c.a.r%' or
+       keyword in ('n. f. l. com', 'm.l.b.', 'fan edges' ) ) then 'Y' else 'N' end as branded_YN
+,substring as marin_kw_id
+,kw_count
+,qs
+,min_bid
+,search_bid
+,cost
+,imp
+,clicks
+,pos
+,cpc
+,revenue
+,conv_count
+from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
+join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
+join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
+join raw_marin.settings_account a on p.marin_client_id=a.marin_client_id
+where date BETWEEN '2014-12-01'AND '2014-12-31'
+;
+
+INSERT INTO temporary.kw_perf_daily_viswa_final
+select
+date
+,marin_keyword_id
+,marin_group_id
+,p.marin_pca_id
+,c.campaign_id
+,a.marin_client_id
+,keyword
+,keyword_match_type
+,case when  (keyword  like '%fanatic%' or
+       lower(keyword)  like '%nfl%' or
+       keyword  like '%nba%' or
+       keyword  like '%fansedge%' or
+       keyword  like '%ncaa%' or
+       keyword  like '%nascar%' or      
+       keyword  like '%nhl%' or
+       keyword  like '%mlb%' or
+       keyword like '%n.f.l%' or
+       keyword like '%n.a.s.c.a.r%' or
+       keyword in ('n. f. l. com', 'm.l.b.', 'fan edges' ) ) then 'Y' else 'N' end as branded_YN
+,substring as marin_kw_id
+,kw_count
+,qs
+,min_bid
+,search_bid
+,cost
+,imp
+,clicks
+,pos
+,cpc
+,revenue
+,conv_count
+from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
+join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
+join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
+join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
+join raw_marin.settings_account a on p.marin_client_id=a.marin_client_id
+where date BETWEEN '2014-11-01'AND '2014-11-30'
+;
+
+select count(*) from temporary.kw_perf_daily_viswa_final
+--95064747
+;
+
+GRANT SELECT ON temporary.kw_perf_daily_viswa_final TO PUBLIC ;
+
+
+
+
