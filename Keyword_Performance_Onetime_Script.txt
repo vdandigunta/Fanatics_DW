@@ -133,51 +133,34 @@ SELECT COUNT(*) FROM temporary.kw_perf_daily_viswa_temp_clean
 --95064747
 ;
 
-drop table temporary.kw_perf_daily_viswa ;
 
-create table temporary.kw_perf_daily_viswa_final 
-distkey (marin_keyword_id)
-sortkey (date)
-as
+/* Join final keyword table with Dimension tables to rollup at campaign/publisher/account level */
+
+DROP TABLE IF EXISTS temporary.kw_perf_daily_viswa_final CASCADE ;
+
+CREATE TABLE temporary.kw_perf_daily_viswa_final
 (
-select
-date
-,marin_keyword_id
-,marin_group_id
-,p.marin_pca_id
-,c.campaign_id
-,a.marin_client_id
-,keyword
-,keyword_match_type
-,case when  (keyword  like '%fanatic%' or
-       lower(keyword)  like '%nfl%' or
-       keyword  like '%nba%' or
-       keyword  like '%fansedge%' or
-       keyword  like '%ncaa%' or
-       keyword  like '%nascar%' or      
-       keyword  like '%nhl%' or
-       keyword  like '%mlb%' or
-       keyword like '%n.f.l%' or
-       keyword like '%n.a.s.c.a.r%' or
-       keyword in ('n. f. l. com', 'm.l.b.', 'fan edges' ) ) then 'Y' else 'N' end as branded_YN
-,substring as marin_kw_id
-,kw_count
-,qs
-,min_bid
-,search_bid
-,cost
-,imp
-,clicks
-,pos
-,cpc
-,revenue
-,conv_count
-from temporary.kw_perf_daily_viswa_temp_clean kw_tmp
-join raw_marin.settings_group g on kw_tmp.marin_group_id=g.group_id
-join raw_marin.settings_campaign c on g.campaign_id=c.campaign_id
-join raw_marin.settings_publisher p on c.marin_pca_id=p.marin_pca_id
-join raw_marin.settings_account a on p.marin_client_id=a.marin_client_id
-where date BETWEEN '2015-01-01'AND '2015-01-31'
+   date                date,
+   marin_keyword_id    bigint,
+   marin_group_id      bigint,
+   marin_pca_id        integer,
+   campaign_id         bigint,
+   marin_client_id     integer,
+   keyword             varchar(255),
+   keyword_match_type  varchar(32),
+   branded_yn          varchar(1),
+   marin_kw_id         varchar(80),
+   kw_count            bigint,
+   qs                  bigint,
+   min_bid             float8,
+   search_bid          numeric(38,6),
+   cost                numeric(38,4),
+   imp                 bigint,
+   clicks              bigint,
+   pos                 numeric(38,15),
+   cpc                 numeric(38,4),
+   revenue             numeric(38,4),
+   conv_count          bigint
 );
 
 
